@@ -1,35 +1,59 @@
-// Your Week in One Line — make.fun entry (program/v1).
+// Your Week in One Line — a make.fun bounty entry.
 //
-// The harness runs `node /bot/main.ts` (Node 22, standard library only, no
-// network). The program writes one line to /output/entry.txt.
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+// One week, one sentence. This script is the whole entry: it carries a
+// single line about the week and writes it out as entry.txt for judging.
+// There is no input, no network, no randomness and no clock involved, so
+// every run produces the exact same bytes.
 //
-// Gate (from RULES.txt): /output/entry.txt must be UTF-8 text of 1-100
-// characters, not only whitespace. This program enforces the gate on its
-// own output and fails loudly instead of handing in a bad entry.
-//
-// The line is a fixed constant: no randomness, no clock, no environment
-// input beyond the output directory, so repeated runs are byte-identical.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+// The line itself is checked before anything is written. If the sentence
+// ever drifts — a typo, a missing word, an accidental second line — the
+// script stops with an error instead of handing in a broken entry.
 
-const LINE =
-  'Four podiums, zero dollars, and a 3 a.m. heist game where the only thing I stole was sleep.';
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
-function validateEntry(line: string): number {
-  // Count Unicode code points, the way the gate counts characters.
-  const chars = [...line].length;
-  if (chars < 1 || chars > 100) throw new Error(`entry is ${chars} chars, gate needs 1-100`);
-  if (!/\S/.test(line)) throw new Error('entry is only whitespace');
-  if (line.includes('\n')) throw new Error('entry must be a single line');
-  return chars;
+// The entry: the week in one line.
+const ENTRY: string =
+  "Four podiums, zero dollars, and a 3 a.m. heist game where the only thing I stole was sleep.";
+
+// The line, counted by hand: 91 characters, no trailing spaces.
+//
+// Three beats in one breath: the result (four podiums), the payout
+// (zero dollars), and the night itself (a 3 a.m. heist game where the
+// only loot was lost sleep). The joke lands because the third beat
+// undercuts the first two — a week that looks like winning on paper
+// and feels like staying up too late playing pretend robbers.
+const EXPECTED_LENGTH = 91;
+
+function fail(reason: string): never {
+  throw new Error(`entry gate failed: ${reason}`);
 }
 
-const chars = validateEntry(LINE);
+function checkEntry(line: string): void {
+  if (line.length !== EXPECTED_LENGTH) {
+    fail(`expected ${EXPECTED_LENGTH} characters, got ${line.length}`);
+  }
+  if (line.includes("\n") || line.includes("\r")) {
+    fail("the entry must be a single line");
+  }
+  if (line.trim() !== line) {
+    fail("the entry must not start or end with whitespace");
+  }
+}
 
-const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
-mkdirSync(out, { recursive: true });
-writeFileSync(join(out, 'entry.txt'), LINE, 'utf8');
-console.log(`wrote entry.txt (${chars} chars)`);
-console.log(LINE);
+function outputDir(): string {
+  return process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
+}
+
+function writeEntry(dir: string, line: string): void {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "entry.txt"), `${line}\n`, "utf8");
+}
+
+function main(): void {
+  checkEntry(ENTRY);
+  writeEntry(outputDir(), ENTRY);
+  console.log(ENTRY);
+}
+
+main();
